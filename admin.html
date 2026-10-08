@@ -103,8 +103,34 @@ function msg(text,cls=''){const e=document.getElementById('loginMsg');e.textCont
 async function authFetch(path,opts={}){return fetch(SUPABASE_URL+path,{...opts,headers:{'apikey':SUPABASE_PUBLISHABLE_KEY,'Content-Type':'application/json',...(opts.headers||{})}})}
 async function login(){msg('');let email=document.getElementById('email').value.trim(),password=document.getElementById('password').value;if(!email||!password)return;
  const r=await authFetch('/auth/v1/token?grant_type=password',{method:'POST',body:JSON.stringify({email,password})}); if(!r.ok){msg(tr('badLogin'),'bad');return};session=await r.json();localStorage.setItem('retex_admin_session',JSON.stringify(session));await enterAdmin();}
-async function signup(){msg('');let email=document.getElementById('email').value.trim(),password=document.getElementById('password').value;if(!email||!password)return;
- const r=await authFetch('/auth/v1/signup',{method:'POST',body:JSON.stringify({email,password})}); if(!r.ok){msg(await safeText(r),'bad');return};msg(tr('signupDone'),'ok')}
+async function signup(){
+  msg('');
+  const email=document.getElementById('email').value.trim();
+  const password=document.getElementById('password').value;
+  const btn=document.getElementById('signupBtn');
+  if(!email){msg(lang==='fr'?'Saisissez votre adresse e-mail.':'Enter your email address.','bad');return}
+  if(!password){msg(lang==='fr'?'Choisissez un mot de passe.':'Choose a password.','bad');return}
+  if(password.length<6){msg(lang==='fr'?'Le mot de passe doit comporter au moins 6 caractères.':'Password must contain at least 6 characters.','bad');return}
+  btn.disabled=true;
+  const old=btn.textContent;
+  btn.textContent=lang==='fr'?'Création…':'Creating…';
+  try{
+    const r=await authFetch('/auth/v1/signup',{method:'POST',body:JSON.stringify({email,password})});
+    const raw=await r.text();
+    let data={}; try{data=raw?JSON.parse(raw):{}}catch{}
+    if(!r.ok){
+      const detail=data.msg||data.message||data.error_description||data.error||raw||('HTTP '+r.status);
+      msg((lang==='fr'?'Création impossible : ':'Unable to create account: ')+detail,'bad');
+      return;
+    }
+    msg(tr('signupDone'),'ok');
+  }catch(e){
+    msg((lang==='fr'?'Erreur réseau : ':'Network error: ')+(e?.message||String(e)),'bad');
+  }finally{
+    btn.disabled=false;
+    btn.textContent=old;
+  }
+}
 async function refreshSession(){if(!session?.refresh_token)return false;let r=await authFetch('/auth/v1/token?grant_type=refresh_token',{method:'POST',body:JSON.stringify({refresh_token:session.refresh_token})});if(!r.ok)return false;session=await r.json();localStorage.setItem('retex_admin_session',JSON.stringify(session));return true}
 async function api(path,opts={}){if(!session?.access_token)throw new Error('NO_SESSION');let doReq=()=>fetch(SUPABASE_URL+path,{...opts,headers:{'apikey':SUPABASE_PUBLISHABLE_KEY,'Authorization':'Bearer '+session.access_token,'Content-Type':'application/json',...(opts.headers||{})}});let r=await doReq();if(r.status===401&&await refreshSession())r=await doReq();return r}
 async function isAdmin(){let r=await api('/rest/v1/rpc/is_admin',{method:'POST',body:'{}'});if(!r.ok)return false;let v=await r.json();return v===true}
