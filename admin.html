@@ -17,7 +17,11 @@ button,input,select,textarea{font:inherit} .wrap{max-width:1220px;margin:auto;pa
 .note{padding:11px 13px;border-radius:12px;background:#fff7e8;border:1px solid #f0cf96;color:#704600;font-size:14px} .ok{background:#ecf8f1;border-color:#b9dfc7;color:#14532d} .bad{background:#fff0ef;border-color:#efc1bd;color:#8b1d15}
 .hidden{display:none!important} .tabs{display:flex;gap:7px;overflow:auto;margin:12px 0} .tab.active{background:var(--accent);color:#fff}
 .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px} .stat{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px} .stat b{font-size:25px;display:block} .stat span{font-size:12px;color:var(--muted)}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px} .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px} .filters{display:grid;grid-template-columns:1.2fr .8fr .8fr .8fr;gap:8px;align-items:end}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px} .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.chartgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.chartcard{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;min-height:340px}
+.chartcard h3{margin:0 0 10px;font-size:15px}.chartwrap{position:relative;height:285px}
+@media(max-width:760px){.chartgrid{grid-template-columns:1fr}.chartcard{min-height:320px}.chartwrap{height:260px}} .filters{display:grid;grid-template-columns:1.2fr .8fr .8fr .8fr;gap:8px;align-items:end}
 table{width:100%;border-collapse:collapse;background:#fff} th,td{padding:10px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top} th{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;position:sticky;top:0;background:#fff} tr.clickable{cursor:pointer} tr.clickable:hover{background:#f8fafc} .tablewrap{overflow:auto;max-height:63vh;border:1px solid var(--line);border-radius:13px}
 .pill{display:inline-block;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:800;background:#e9eef4} .pill.p1{background:#fde7e5;color:#8f1d15} .pill.p2{background:#fff2d7;color:#7c4e00} .pill.p3{background:#e9f5ee;color:#16603c} .pill.new{background:#e9eef4} .pill.reviewed{background:#e7f0ff;color:#1d4f91} .pill.action_required{background:#fff2d7;color:#7c4e00} .pill.closed{background:#e9f5ee;color:#16603c}
 .barlist{display:grid;gap:8px} .barrow{display:grid;grid-template-columns:160px 1fr 42px;gap:10px;align-items:center} .bartrack{height:11px;background:#edf1f5;border-radius:999px;overflow:hidden} .barfill{height:100%;background:var(--accent)}
@@ -44,7 +48,7 @@ table{width:100%;border-collapse:collapse;background:#fff} th,td{padding:10px 8p
 
   <main id="adminView" class="hidden">
     <div id="accessMsg" class="note ok">Accès administrateur vérifié.</div>
-    <div class="tabs"><button class="tab active" data-tab="dashboard" onclick="showTab('dashboard',this)">Dashboard</button><button class="tab" data-tab="reports" onclick="showTab('reports',this)">Reports</button><button class="tab" data-tab="actions" onclick="showTab('actions',this)">Actions 2027</button></div>
+    <div class="tabs"><button class="tab active" data-tab="dashboard" onclick="showTab('dashboard',this)">Dashboard</button><button class="tab" data-tab="analysis" onclick="showTab('analysis',this)">Analysis</button><button class="tab" data-tab="reports" onclick="showTab('reports',this)">Reports</button><button class="tab" data-tab="actions" onclick="showTab('actions',this)">Actions 2027</button></div>
 
     <section id="tab-dashboard">
       <div class="stats">
@@ -61,6 +65,25 @@ table{width:100%;border-collapse:collapse;background:#fff} th,td{padding:10px 8p
       <div class="grid2">
         <div class="card"><h3 id="statusTitle">Statut de revue</h3><div id="statusBars" class="barlist"></div></div>
         <div class="card"><h3 id="priorityTitle">Priorités</h3><div id="priorityBars" class="barlist"></div></div>
+      </div>
+      <div class="chartgrid">
+        <div class="chartcard"><h3>Notes moyennes / Average ratings</h3><div class="chartwrap"><canvas id="chartRatings"></canvas></div></div>
+        <div class="chartcard"><h3>Situations à risque / Safety concerns</h3><div class="chartwrap"><canvas id="chartRisk"></canvas></div></div>
+        <div class="chartcard"><h3>Statut de revue / Review status</h3><div class="chartwrap"><canvas id="chartStatus"></canvas></div></div>
+        <div class="chartcard"><h3>Priorités / Priorities</h3><div class="chartwrap"><canvas id="chartPriority"></canvas></div></div>
+      </div>
+    </section>
+
+    <section id="tab-analysis" class="hidden">
+      <div class="card">
+        <h3>Analyse détaillée / Detailed analysis</h3>
+        <div class="small">Les graphiques ci-dessous utilisent les réponses reçues dans Supabase et se mettent à jour automatiquement.</div>
+      </div>
+      <div class="chartgrid">
+        <div class="chartcard"><h3>Distribution des notes / Rating distribution</h3><div class="chartwrap"><canvas id="chartDistribution"></canvas></div></div>
+        <div class="chartcard"><h3>Répartition par fonction / By role</h3><div class="chartwrap"><canvas id="chartRole"></canvas></div></div>
+        <div class="chartcard"><h3>Répartition par appareil / By aircraft</h3><div class="chartwrap"><canvas id="chartAircraft"></canvas></div></div>
+        <div class="chartcard"><h3>Actions ouvertes / Open actions</h3><div class="chartwrap"><canvas id="chartActions"></canvas></div></div>
       </div>
     </section>
 
@@ -85,11 +108,13 @@ table{width:100%;border-collapse:collapse;background:#fff} th,td{padding:10px 8p
 
 <div id="modal" class="modal hidden"><div class="modalbox"><div class="modalhead"><div><h2 id="modalTitle" style="margin:0"></h2><div id="modalMeta" class="small"></div></div><button onclick="closeModal()">✕</button></div><div id="modalBody" style="margin-top:14px"></div></div></div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script>
 const SUPABASE_URL='https://bmbsedxryyqcamegiaes.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_IP-Cq6KBFPFtDemcygM43w_qAFcoJql';
 let lang=localStorage.getItem('retex_admin_lang')||'fr';
 let session=null, reports=[];
+let charts={};
 const T={
 fr:{brandSub:"Espace privé d'analyse des rapports reçus",loginTitle:'Connexion administrateur',loginInfo:"Connectez-vous avec votre compte autorisé. Les rapporteurs n'ont pas accès à cette page.",email:'E-mail',password:'Mot de passe',login:'Se connecter',signup:'Créer un compte',refresh:'Actualiser',logout:'Déconnexion',denied:"Ce compte n'est pas autorisé à consulter les rapports.",signupDone:"Compte créé. Vérifiez votre e-mail si une confirmation est demandée, puis demandez l'activation administrateur.",badLogin:'Connexion impossible. Vérifiez vos identifiants.',adminOk:'Accès administrateur vérifié.',total:'Rapports reçus',risk:'Situations à risque',train:'Formation moyenne',saf:'Organisation SAF',open:'Actions ouvertes',roles:'Répartition par fonction',aircraft:'Répartition par appareil',status:'Statut de revue',priority:'Priorités',search:'Recherche',role:'Fonction',riskFilter:'Risque',statusFilter:'Statut',all:'Toutes',csv:'Exporter CSV',actions:'Actions 2027',count:n=>`${n} rapport(s) affiché(s)`,noData:'Aucune donnée',save:'Enregistrer les modifications',saved:'Modifications enregistrées.',details:'Détail du rapport',adminReview:'Revue administrateur',owner:'Responsable',due:'Échéance',adminComment:'Commentaire admin',actionReq:'Action requise',yes:'Oui',no:'Non',raw:'Réponses complètes',loadErr:'Impossible de charger les rapports.'},
 en:{brandSub:'Private analysis area for submitted reports',loginTitle:'Administrator sign-in',loginInfo:'Sign in with an authorized account. Reporters cannot access this page.',email:'Email',password:'Password',login:'Sign in',signup:'Create account',refresh:'Refresh',logout:'Sign out',denied:'This account is not authorized to view reports.',signupDone:'Account created. Check your email if confirmation is required, then request administrator activation.',badLogin:'Sign-in failed. Check your credentials.',adminOk:'Administrator access verified.',total:'Reports received',risk:'Safety concerns',train:'Average training',saf:'SAF organization',open:'Open actions',roles:'By role',aircraft:'By aircraft',status:'Review status',priority:'Priorities',search:'Search',role:'Role',riskFilter:'Risk',statusFilter:'Status',all:'All',csv:'Export CSV',actions:'2027 Actions',count:n=>`${n} report(s) displayed`,noData:'No data',save:'Save changes',saved:'Changes saved.',details:'Report details',adminReview:'Administrator review',owner:'Owner',due:'Due date',adminComment:'Admin comment',actionReq:'Action required',yes:'Yes',no:'No',raw:'Full responses',loadErr:'Unable to load reports.'}
@@ -140,7 +165,7 @@ async function loadReports(){let r=await api('/rest/v1/retex_fire_2026_reports?s
 function populateFilters(){let s=document.getElementById('roleFilter'),cur=s.value;let roles=[...new Set(reports.map(r=>r.role).filter(Boolean))].sort();s.innerHTML=`<option value="">${tr('all')}</option>`+roles.map(x=>`<option>${esc(x)}</option>`).join('');s.value=cur}
 function avg(vals){let a=vals.map(Number).filter(x=>x>=1&&x<=5);return a.length?(a.reduce((x,y)=>x+y,0)/a.length).toFixed(1):'—'}
 function riskYes(v){return ['oui','yes','true','1'].includes(String(v||'').toLowerCase())}
-function renderAll(){if(!document.getElementById('adminView').classList.contains('hidden')){renderDashboard();renderReports();renderActions()}}
+function renderAll(){if(!document.getElementById('adminView').classList.contains('hidden')){renderDashboard();renderReports();renderActions();setTimeout(renderCharts,0)}}
 function counts(list,fn){let c={};list.forEach(x=>{let v=fn(x);(Array.isArray(v)?v:[v]).filter(Boolean).forEach(k=>c[k]=(c[k]||0)+1)});return c}
 function bars(id,c){let e=document.getElementById(id),arr=Object.entries(c).sort((a,b)=>b[1]-a[1]),m=Math.max(1,...arr.map(x=>x[1]));e.innerHTML=arr.length?arr.map(([k,v])=>`<div class="barrow"><div>${esc(k)}</div><div class="bartrack"><div class="barfill" style="width:${v/m*100}%"></div></div><b>${v}</b></div>`).join(''):`<span class="small">${tr('noData')}</span>`}
 function renderDashboard(){let total=reports.length,risks=reports.filter(r=>riskYes(r.risk_seen)).length;document.getElementById('stTotal').textContent=total;document.getElementById('stRisk').textContent=total?Math.round(risks/total*100)+'%':'—';document.getElementById('stTrain').textContent=avg(reports.map(r=>r.training_global));document.getElementById('stSaf').textContent=avg(reports.map(r=>r.saf_org_rating));document.getElementById('stOpen').textContent=reports.filter(r=>r.action_required&&r.review_status!=='closed').length;bars('roleBars',counts(reports,r=>r.role));bars('aircraftBars',counts(reports,r=>r.aircraft));bars('statusBars',counts(reports,r=>r.review_status||'new'));bars('priorityBars',counts(reports,r=>r.priority||'—'))}
@@ -149,6 +174,66 @@ function pill(v){let x=v||'—',cls=String(x).toLowerCase().replace(/\s+/g,'_');
 function fmtDate(x){if(!x)return'';try{return new Date(x).toLocaleString(lang==='fr'?'fr-FR':'en-GB')}catch{return x}}
 function renderReports(){let a=filtered();document.getElementById('reportCount').textContent=tr('count')(a.length);document.getElementById('reportRows').innerHTML=a.map(r=>`<tr class="clickable" onclick="openReport('${r.id}')"><td>${esc(fmtDate(r.submitted_at))}</td><td>${esc(r.report_id)}</td><td>${esc(r.reporter_name||'—')}</td><td>${esc(r.role||'—')}</td><td>${esc((r.aircraft||[]).join(', ')||'—')}</td><td>${riskYes(r.risk_seen)?pill(lang==='fr'?'Oui':'Yes'):pill(lang==='fr'?'Non':'No')}</td><td>${pill(r.review_status||'new')}</td><td>${pill(r.priority||'—')}</td></tr>`).join('')}
 function renderActions(){let a=reports.filter(r=>r.action_required||r.review_status==='action_required');document.getElementById('actionRows').innerHTML=a.map(r=>`<tr class="clickable" onclick="openReport('${r.id}')"><td>${esc(r.report_id)}</td><td>${pill(r.priority||'—')}</td><td>${esc(r.action_owner||'—')}</td><td>${esc(r.due_date||'—')}</td><td>${pill(r.review_status||'new')}</td><td>${esc(r.admin_comment||'')}</td></tr>`).join('')}
+function chartDestroy(id){if(charts[id]){charts[id].destroy();delete charts[id]}}
+function chartMake(id,type,labels,data,opts={}){
+  if(typeof Chart==='undefined')return;
+  const el=document.getElementById(id); if(!el)return;
+  chartDestroy(id);
+  const baseOptions={
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'bottom',labels:{boxWidth:12,usePointStyle:true}},tooltip:{enabled:true}},
+    scales:(type==='bar'||type==='line')?{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,.06)'}},x:{grid:{display:false}}}:undefined
+  };
+  charts[id]=new Chart(el,{type,data:{labels,datasets:[{label:opts.label||'',data,borderWidth:1.5,borderRadius:opts.borderRadius??6,backgroundColor:opts.backgroundColor}]},options:{...baseOptions,...(opts.options||{})}});
+}
+function ratingDistribution(field){
+  const out=[0,0,0,0,0];
+  reports.forEach(r=>{const n=Number(r[field]);if(n>=1&&n<=5)out[n-1]++});
+  return out;
+}
+function renderCharts(){
+  if(typeof Chart==='undefined')return;
+  Chart.defaults.font.family='system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif';
+  Chart.defaults.color='#465267';
+
+  const ratingLabels=['Formation','Organisation SAF','Coordination','Logistique'];
+  const ratingData=[
+    Number(avg(reports.map(r=>r.training_global)))||0,
+    Number(avg(reports.map(r=>r.saf_org_rating)))||0,
+    Number(avg(reports.map(r=>r.civil_coord_rating)))||0,
+    Number(avg(reports.map(r=>r.logistics_rating)))||0
+  ];
+  chartMake('chartRatings','bar',ratingLabels,ratingData,{label:'Moyenne / 5',backgroundColor:['#0e617d','#2f7e95','#5d9dad','#8bb9c4'],options:{indexAxis:'y',scales:{x:{beginAtZero:true,max:5,ticks:{stepSize:1},grid:{color:'rgba(0,0,0,.06)'}},y:{grid:{display:false}}},plugins:{legend:{display:false}}}});
+
+  const riskYesCount=reports.filter(r=>riskYes(r.risk_seen)).length;
+  const riskNoCount=Math.max(0,reports.length-riskYesCount);
+  chartMake('chartRisk','doughnut',[lang==='fr'?'Oui':'Yes',lang==='fr'?'Non':'No'],[riskYesCount,riskNoCount],{backgroundColor:['#b42318','#16794b'],options:{cutout:'68%',plugins:{legend:{position:'bottom'}}}});
+
+  const sc=counts(reports,r=>r.review_status||'new');
+  chartMake('chartStatus','doughnut',['New','Reviewed','Action required','Closed'],[sc.new||0,sc.reviewed||0,sc.action_required||0,sc.closed||0],{backgroundColor:['#98a2b3','#2f80ed','#f2a900','#16794b'],options:{cutout:'68%'}});
+
+  const pc=counts(reports,r=>r.priority||'—');
+  chartMake('chartPriority','bar',['P1','P2','P3'],[pc.P1||0,pc.P2||0,pc.P3||0],{backgroundColor:['#b42318','#f2a900','#16794b'],options:{plugins:{legend:{display:false}}}});
+
+  const distFields=['training_global','saf_org_rating','civil_coord_rating','logistics_rating'];
+  const distLabels=['1','2','3','4','5'];
+  const dsColors=['#0e617d','#2f80ed','#7b61ff','#16794b'];
+  chartDestroy('chartDistribution');
+  const de=document.getElementById('chartDistribution');
+  if(de) charts.chartDistribution=new Chart(de,{type:'bar',data:{labels:distLabels,datasets:distFields.map((f,i)=>({label:ratingLabels[i],data:ratingDistribution(f),backgroundColor:dsColors[i],borderRadius:4}))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true,ticks:{precision:0}},x:{grid:{display:false}}}}});
+
+  const rc=counts(reports,r=>r.role);
+  const roleEntries=Object.entries(rc).sort((a,b)=>b[1]-a[1]);
+  chartMake('chartRole','bar',roleEntries.map(x=>x[0]),roleEntries.map(x=>x[1]),{backgroundColor:'#0e617d',options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,ticks:{precision:0}},y:{grid:{display:false}}}}});
+
+  const ac=counts(reports,r=>r.aircraft);
+  const aircraftEntries=Object.entries(ac).sort((a,b)=>b[1]-a[1]);
+  chartMake('chartAircraft','bar',aircraftEntries.map(x=>x[0]),aircraftEntries.map(x=>x[1]),{backgroundColor:'#2f80ed',options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{precision:0}},x:{grid:{display:false}}}}});
+
+  const open=reports.filter(r=>r.action_required&&r.review_status!=='closed').length;
+  const closed=reports.filter(r=>r.action_required&&r.review_status==='closed').length;
+  chartMake('chartActions','doughnut',[lang==='fr'?'Ouvertes':'Open',lang==='fr'?'Clôturées':'Closed'],[open,closed],{backgroundColor:['#f2a900','#16794b'],options:{cutout:'68%'}});
+}
 function openReport(id){let r=reports.find(x=>x.id===id);if(!r)return;document.getElementById('modalTitle').textContent=`${tr('details')} — ${r.report_id}`;document.getElementById('modalMeta').textContent=fmtDate(r.submitted_at);let p=r.payload||{};let rows=Object.entries(p).filter(([k])=>!['id','timestamp','lang'].includes(k)).map(([k,v])=>`<div class="k">${esc(labelize(k))}</div><div>${esc(Array.isArray(v)?v.join(', '):(v??'—'))}</div>`).join('');document.getElementById('modalBody').innerHTML=`<div class="kv">${rows}</div><div class="card"><h3>${tr('adminReview')}</h3><div class="grid3"><div><label>Status</label><select id="mStatus"><option value="new">New</option><option value="reviewed">Reviewed</option><option value="action_required">Action required</option><option value="closed">Closed</option></select></div><div><label>Priority</label><select id="mPriority"><option value="">—</option><option>P1</option><option>P2</option><option>P3</option></select></div><div><label>${tr('actionReq')}</label><select id="mAction"><option value="false">${tr('no')}</option><option value="true">${tr('yes')}</option></select></div></div><div class="grid2"><div><label>${tr('owner')}</label><input id="mOwner" type="text"></div><div><label>${tr('due')}</label><input id="mDue" type="date"></div></div><label>${tr('adminComment')}</label><textarea id="mComment"></textarea><div style="margin-top:12px"><button class="primary" onclick="saveReview('${r.id}')">${tr('save')}</button></div></div>`;document.getElementById('mStatus').value=r.review_status||'new';document.getElementById('mPriority').value=r.priority||'';document.getElementById('mAction').value=String(!!r.action_required);document.getElementById('mOwner').value=r.action_owner||'';document.getElementById('mDue').value=r.due_date||'';document.getElementById('mComment').value=r.admin_comment||'';document.getElementById('modal').classList.remove('hidden')}
 async function saveReview(id){let body={review_status:document.getElementById('mStatus').value,priority:document.getElementById('mPriority').value||null,action_required:document.getElementById('mAction').value==='true',action_owner:document.getElementById('mOwner').value||null,due_date:document.getElementById('mDue').value||null,admin_comment:document.getElementById('mComment').value||null};if(body.review_status==='closed')body.closed_at=new Date().toISOString();let r=await api('/rest/v1/retex_fire_2026_reports?id=eq.'+encodeURIComponent(id),{method:'PATCH',headers:{'Prefer':'return=representation'},body:JSON.stringify(body)});if(!r.ok){alert(await safeText(r));return}let arr=await r.json();let i=reports.findIndex(x=>x.id===id);if(i>=0)reports[i]=arr[0];alert(tr('saved'));closeModal();renderAll()}
 function closeModal(){document.getElementById('modal').classList.add('hidden')}
@@ -166,7 +251,7 @@ function exportCSV(){
   ael.click();
   URL.revokeObjectURL(u);
 }
-function showTab(name,btn){document.querySelectorAll('[id^=tab-]').forEach(e=>e.classList.add('hidden'));document.getElementById('tab-'+name).classList.remove('hidden');document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active'));btn.classList.add('active')}
+function showTab(name,btn){document.querySelectorAll('[id^=tab-]').forEach(e=>e.classList.add('hidden'));document.getElementById('tab-'+name).classList.remove('hidden');document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active'));btn.classList.add('active');if(name==='dashboard'||name==='analysis')setTimeout(renderCharts,50)}
 function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 async function safeText(r){try{let t=await r.text();return t.slice(0,500)}catch{return 'Error'}}
 window.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
