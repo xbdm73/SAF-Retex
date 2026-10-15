@@ -90,7 +90,7 @@ function toggleLang(){lang=lang==='fr'?'en':'fr';let data=getFormData();applyLan
 function goStep(n){step=Math.max(0,Math.min(6,n));document.querySelectorAll('.step').forEach((e,i)=>e.classList.toggle('hidden',i!==step));document.getElementById('prog').style.width=((step+1)/7*100)+'%';scrollTo({top:0,behavior:'smooth'})}
 function nextStep(){if(step===0&&!document.querySelector('[name=role]:checked')){alert(lang==='fr'?'Veuillez sélectionner votre fonction/statut.':'Please select your role/status.');return}goStep(step+1)}
 function prevStep(){goStep(step-1)}
-function getFormData(){let fd=new FormData(document.getElementById('retexForm')),o={};for(let [k,v] of fd){if(o[k]!==undefined)o[k]=Array.isArray(o[k])?[...o[k],v]:[o[k],v];else o[k]=v}['aircraft','training_topics','potential_base_advantages','improvement_areas'].forEach(k=>{if(o[k]===undefined)o[k]=[];else if(!Array.isArray(o[k]))o[k]=[o[k]]});return o}
+function getFormData(){let fd=new FormData(document.getElementById('retexForm')),o={};for(let [k,v] of fd){if(o[k]!==undefined)o[k]=Array.isArray(o[k])?[...o[k],v]:[o[k],v];else o[k]=v}['aircraft','training_topics','potential_base_advantages','improvement_areas'].forEach(k=>{if(o[k]===undefined)o[k]=[];else if(!Array.isArray(o[k]))o[k]=[o[k]]});document.querySelectorAll('#retexForm [name]').forEach(el=>{if(o[el.name]===undefined)o[el.name]=''});return o}
 function setFormData(o){if(!o)return;Object.entries(o).forEach(([k,v])=>{let vals=Array.isArray(v)?v:[v];document.querySelectorAll(`[name="${k}"]`).forEach(el=>{if(el.type==='checkbox'||el.type==='radio')el.checked=vals.includes(el.value);else el.value=vals[0]??''})})}
 function saveDraft(){localStorage.setItem('retex_draft',JSON.stringify(getFormData()));alert(lang==='fr'?'Brouillon sauvegardé sur cet appareil.':'Draft saved on this device.')}
 function resetForm(){if(!confirm(lang==='fr'?'Créer une nouvelle réponse et effacer le formulaire actuel ?':'Create a new response and clear the current form?'))return;document.getElementById('retexForm').reset();localStorage.removeItem('retex_draft');goStep(0)}
@@ -103,7 +103,7 @@ function nullableInt(v){const n=Number(v);return Number.isInteger(n)&&n>=1&&n<=5
 function makeReportId(){const d=new Date();const pad=n=>String(n).padStart(2,'0');const stamp=`${String(d.getUTCFullYear()).slice(-2)}${pad(d.getUTCMonth()+1)}${pad(d.getUTCDate())}-${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}`;const rnd=Math.random().toString(36).slice(2,6).toUpperCase();return `R26-${stamp}-${rnd}`}
 async function submitToSupabase(d){
   const reportId=makeReportId();
-  d.id=reportId;d.timestamp=new Date().toISOString();d.lang=lang;
+  d.id=reportId;d.timestamp=new Date().toISOString();d.lang=lang;d.taxonomy_version='RETEX-FEUX-2026-v1';
   const payload={
     report_id:reportId,
     lang:lang,
@@ -137,6 +137,9 @@ document.getElementById('retexForm').addEventListener('submit',async e=>{
   const form=e.currentTarget;
   const btn=form.querySelector('button[type=submit]');
   if(btn.disabled)return;
+  // Envoi uniquement par un clic volontaire sur le bouton final, à la dernière étape
+  if(step!==6||(e.submitter&&e.submitter!==btn))return;
+  if(!confirm(lang==='fr'?'Envoyer votre RETEX maintenant ? Vous ne pourrez plus le modifier.':'Send your feedback now? You will not be able to edit it afterwards.'))return;
   const d=getFormData();
   if(!d.role){alert(lang==='fr'?'Veuillez sélectionner votre fonction/statut.':'Please select your role/status.');return}
   localStorage.setItem('retex_draft',JSON.stringify(d));
@@ -170,6 +173,8 @@ function clearAll(){if(confirm(lang==='fr'?'Effacer définitivement toutes les r
 function escapeHtml(s){return String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function bindMax5(){document.querySelectorAll('[name=improvement_areas]').forEach(x=>x.addEventListener('change',()=>{let c=document.querySelectorAll('[name=improvement_areas]:checked').length;if(c>5){x.checked=false;alert(lang==='fr'?'Maximum 5 réponses.':'Maximum 5 answers.')}document.getElementById('max5Msg').textContent=`${Math.min(c,5)} / 5`}))}
 let draftTimer;const formEl=document.getElementById('retexForm');
+// La touche Entrée (ou « OK / Aller » du clavier du téléphone) ne doit jamais envoyer le formulaire
+formEl.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.tagName==='INPUT'){e.preventDefault();e.target.blur()}});
 ['input','change'].forEach(evt=>formEl.addEventListener(evt,()=>{clearTimeout(draftTimer);draftTimer=setTimeout(()=>{try{localStorage.setItem('retex_draft',JSON.stringify(getFormData()))}catch{}},350)}));
 applyLang();goStep(0);let draft=localStorage.getItem('retex_draft');if(draft){try{setFormData(JSON.parse(draft))}catch{}}
 </script>
