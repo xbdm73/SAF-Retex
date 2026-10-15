@@ -42,7 +42,7 @@ table{width:100%;border-collapse:collapse;background:#fff} th,td{padding:10px 8p
     <div id="loginInfo" class="note">Connectez-vous avec votre compte autorisé. Les rapporteurs n'ont pas accès à cette page.</div>
     <label id="emailLbl">E-mail</label><input id="email" type="email" autocomplete="username">
     <label id="passwordLbl">Mot de passe</label><input id="password" type="password" autocomplete="current-password">
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="primary" id="loginBtn" onclick="login()">Se connecter</button><button id="signupBtn" onclick="signup()">Créer un compte</button></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="primary" id="loginBtn" onclick="login()">Se connecter</button><button id="signupBtn" onclick="signup()">Créer un compte</button><button id="forgotBtn" onclick="forgotPwd()" style="background:none;border:none;text-decoration:underline;cursor:pointer">Mot de passe oublié</button></div>
     <div id="loginMsg" class="small" style="margin-top:10px"></div>
   </section>
 
@@ -127,7 +127,7 @@ function toggleLang(){lang=lang==='fr'?'en':'fr';applyLang()}
 function msg(text,cls=''){const e=document.getElementById('loginMsg');e.textContent=text;e.className='small '+cls}
 async function authFetch(path,opts={}){return fetch(SUPABASE_URL+path,{...opts,headers:{'apikey':SUPABASE_PUBLISHABLE_KEY,'Content-Type':'application/json',...(opts.headers||{})}})}
 async function login(){msg('');let email=document.getElementById('email').value.trim(),password=document.getElementById('password').value;if(!email||!password)return;
- const r=await authFetch('/auth/v1/token?grant_type=password',{method:'POST',body:JSON.stringify({email,password})}); if(!r.ok){msg(tr('badLogin'),'bad');return};session=await r.json();localStorage.setItem('retex_admin_session',JSON.stringify(session));await enterAdmin();}
+ const r=await authFetch('/auth/v1/token?grant_type=password',{method:'POST',body:JSON.stringify({email,password})}); if(!r.ok){let d={};try{d=await r.json()}catch{};if(d.error_code==='email_not_confirmed'||/not confirmed/i.test(d.msg||d.error_description||'')){msg(lang==='fr'?"Adresse e-mail pas encore confirmée : cliquez sur le lien reçu par e-mail.":'Email not confirmed yet: click the link in the email you received.','bad')}else{msg(tr('badLogin'),'bad')}return};session=await r.json();localStorage.setItem('retex_admin_session',JSON.stringify(session));await enterAdmin();}
 async function signup(){
   msg('');
   const email=document.getElementById('email').value.trim();
@@ -140,12 +140,22 @@ async function signup(){
   const old=btn.textContent;
   btn.textContent=lang==='fr'?'Création…':'Creating…';
   try{
-    const r=await authFetch('/auth/v1/signup',{method:'POST',body:JSON.stringify({email,password})});
+    const back=location.origin+location.pathname;
+    const r=await authFetch('/auth/v1/signup?redirect_to='+encodeURIComponent(back),{method:'POST',body:JSON.stringify({email,password,options:{emailRedirectTo:back}})});
     const raw=await r.text();
     let data={}; try{data=raw?JSON.parse(raw):{}}catch{}
     if(!r.ok){
       const detail=data.msg||data.message||data.error_description||data.error||raw||('HTTP '+r.status);
       msg((lang==='fr'?'Création impossible : ':'Unable to create account: ')+detail,'bad');
+      return;
+    }
+    const u=data.user||data;
+    if(Array.isArray(u.identities)&&u.identities.length===0){
+      msg(lang==='fr'?"Cette adresse a déjà un compte. Connectez-vous, ou utilisez « Mot de passe oublié » si besoin.":'This address already has an account. Sign in, or use “Forgot password” if needed.','bad');
+      return;
+    }
+    if(!data.access_token&&!data.session){
+      msg(lang==='fr'?"Compte créé. Un e-mail de confirmation a été envoyé à "+email+" (pensez aux indésirables). Cliquez sur le lien, puis demandez l'activation administrateur.":'Account created. A confirmation email was sent to '+email+' (check your spam folder). Click the link, then request administrator activation.','ok');
       return;
     }
     msg(tr('signupDone'),'ok');
@@ -156,6 +166,11 @@ async function signup(){
     btn.textContent=old;
   }
 }
+async function forgotPwd(){msg('');const email=document.getElementById('email').value.trim();if(!email){msg(lang==='fr'?'Saisissez votre adresse e-mail.':'Enter your email address.','bad');return}
+  const back=location.origin+location.pathname;
+  try{const r=await authFetch('/auth/v1/recover?redirect_to='+encodeURIComponent(back),{method:'POST',body:JSON.stringify({email})});
+    msg(r.ok?(lang==='fr'?'Si un compte existe pour '+email+', un e-mail de réinitialisation vient d\'être envoyé.':'If an account exists for '+email+', a reset email has been sent.'):(lang==='fr'?'Envoi impossible (HTTP '+r.status+').':'Unable to send (HTTP '+r.status+').'),r.ok?'ok':'bad')}
+  catch(e){msg((lang==='fr'?'Erreur réseau : ':'Network error: ')+(e?.message||String(e)),'bad')}}
 async function refreshSession(){if(!session?.refresh_token)return false;let r=await authFetch('/auth/v1/token?grant_type=refresh_token',{method:'POST',body:JSON.stringify({refresh_token:session.refresh_token})});if(!r.ok)return false;session=await r.json();localStorage.setItem('retex_admin_session',JSON.stringify(session));return true}
 async function api(path,opts={}){if(!session?.access_token)throw new Error('NO_SESSION');let doReq=()=>fetch(SUPABASE_URL+path,{...opts,headers:{'apikey':SUPABASE_PUBLISHABLE_KEY,'Authorization':'Bearer '+session.access_token,'Content-Type':'application/json',...(opts.headers||{})}});let r=await doReq();if(r.status===401&&await refreshSession())r=await doReq();return r}
 async function isAdmin(){let r=await api('/rest/v1/rpc/is_admin',{method:'POST',body:'{}'});if(!r.ok)return false;let v=await r.json();return v===true}
@@ -255,6 +270,17 @@ function showTab(name,btn){document.querySelectorAll('[id^=tab-]').forEach(e=>e.
 function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 async function safeText(r){try{let t=await r.text();return t.slice(0,500)}catch{return 'Error'}}
 window.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
-(function init(){applyLang();try{session=JSON.parse(localStorage.getItem('retex_admin_session')||'null')}catch{}if(session?.access_token)enterAdmin()})();
+(async function init(){applyLang();
+ const h=new URLSearchParams(location.hash.replace(/^#/,''));
+ if(h.get('error_description')){history.replaceState(null,'',location.pathname);msg(decodeURIComponent(h.get('error_description').replace(/\+/g,' ')),'bad');return}
+ if(h.get('access_token')){
+  const t=h.get('type');session={access_token:h.get('access_token'),refresh_token:h.get('refresh_token')};history.replaceState(null,'',location.pathname);
+  if(t==='recovery'){
+   const np=prompt(lang==='fr'?'Nouveau mot de passe (6 caractères minimum) :':'New password (at least 6 characters):');
+   if(np&&np.length>=6){const r=await api('/auth/v1/user',{method:'PUT',body:JSON.stringify({password:np})});msg(r.ok?(lang==='fr'?'Mot de passe modifié.':'Password updated.'):(lang==='fr'?'Modification impossible (HTTP '+r.status+').':'Update failed (HTTP '+r.status+').'),r.ok?'ok':'bad')}
+   else{msg(lang==='fr'?'Mot de passe non modifié.':'Password not changed.','bad')}
+  }else if(t==='signup'){msg(lang==='fr'?'Adresse e-mail confirmée.':'Email address confirmed.','ok')}
+  localStorage.setItem('retex_admin_session',JSON.stringify(session));await enterAdmin();return}
+ try{session=JSON.parse(localStorage.getItem('retex_admin_session')||'null')}catch{}if(session?.access_token)enterAdmin()})();
 </script>
 </body></html>
