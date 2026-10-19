@@ -33,6 +33,24 @@ table{width:100%;border-collapse:collapse;background:#fff} th,td{padding:10px 8p
 @media (min-width:700px){.modalbox .kv{grid-template-columns:minmax(260px,42%) 1fr}}
 .kv .ans{white-space:pre-wrap}
 .chips{display:flex;flex-wrap:wrap;gap:6px}.chip{background:#eef4f7;border:1px solid #cfe0e7;border-radius:999px;padding:2px 10px;font-size:.92em}
+.qa-toolbar{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap}
+.qa-filters{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}.qa-filters label{margin:0 0 4px;font-size:12px}.qa-filters select{min-width:150px}
+.qa-sec{margin-top:22px}.qa-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:10px}
+.qa-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;min-width:0;break-inside:avoid}.qa-wide{grid-column:1/-1}
+.qa-head{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px}.qa-head h4{margin:0 0 6px;font-size:15px;line-height:1.35}
+.qa-num{flex:none;background:var(--accent);color:#fff;font-weight:800;font-size:12px;border-radius:8px;padding:3px 7px;margin-top:1px}
+.qa-meta{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.qa-chart{position:relative;margin:6px 0 10px}
+.qa-tbl{font-size:13px}.qa-tbl th,.qa-tbl td{padding:6px 8px;position:static}.qa-tbl .n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.qa-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:6px}.qa-kpis div{background:var(--soft);border-radius:12px;padding:8px 10px}
+.qa-kpis b{display:block;font-size:20px}.qa-kpis span{font-size:11.5px;color:var(--muted)}.qa-kpis .good{color:var(--ok)}.qa-kpis .badc{color:var(--bad)}
+.qa-words{margin:8px 0}.qa-words .chips{margin-top:6px}.qa-ans summary{cursor:pointer;font-weight:700;color:var(--accent);margin-top:8px}
+.qa-ans ol{margin:8px 0 0;padding-left:22px}.qa-ans li{padding:7px 0;border-bottom:1px solid var(--line);white-space:pre-wrap}.qa-ans li .small{white-space:normal;margin-top:3px}
+.qa-card .barrow{grid-template-columns:minmax(140px,1.4fr) 1fr 30px}
+@media(max-width:820px){.qa-grid{grid-template-columns:1fr}.qa-kpis{grid-template-columns:repeat(2,1fr)}}
+@media print{body.qa-printing .top,body.qa-printing .tabs,body.qa-printing #accessMsg,body.qa-printing .qa-filters,body.qa-printing main>section:not(#tab-questions){display:none!important}
+ body.qa-printing #tab-questions{display:block!important}body.qa-printing{background:#fff}body.qa-printing .qa-card{box-shadow:none}body.qa-printing .wrap{max-width:none;padding:0}
+ *{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 </style>
 </head>
 <body>
@@ -53,7 +71,7 @@ table{width:100%;border-collapse:collapse;background:#fff} th,td{padding:10px 8p
 
   <main id="adminView" class="hidden">
     <div id="accessMsg" class="note ok">Accès administrateur vérifié.</div>
-    <div class="tabs"><button class="tab active" data-tab="dashboard" onclick="showTab('dashboard',this)">Dashboard</button><button class="tab" data-tab="analysis" onclick="showTab('analysis',this)">Analysis</button><button class="tab" data-tab="reports" onclick="showTab('reports',this)">Reports</button><button class="tab" data-tab="actions" onclick="showTab('actions',this)">Actions 2027</button></div>
+    <div class="tabs"><button class="tab active" data-tab="dashboard" onclick="showTab('dashboard',this)">Dashboard</button><button class="tab" data-tab="analysis" onclick="showTab('analysis',this)">Analysis</button><button class="tab" data-tab="questions" onclick="showTab('questions',this)">Questions</button><button class="tab" data-tab="reports" onclick="showTab('reports',this)">Reports</button><button class="tab" data-tab="actions" onclick="showTab('actions',this)">Actions 2027</button></div>
 
     <section id="tab-dashboard">
       <div class="stats">
@@ -90,6 +108,19 @@ table{width:100%;border-collapse:collapse;background:#fff} th,td{padding:10px 8p
         <div class="chartcard"><h3>Répartition par appareil / By aircraft</h3><div class="chartwrap"><canvas id="chartAircraft"></canvas></div></div>
         <div class="chartcard"><h3>Actions ouvertes / Open actions</h3><div class="chartwrap"><canvas id="chartActions"></canvas></div></div>
       </div>
+    </section>
+
+    <section id="tab-questions" class="hidden">
+      <div class="card qa-toolbar">
+        <div><h3 id="qaTitle" style="margin:0 0 4px">Analyse par question</h3><div id="qaScope" class="small"></div></div>
+        <div class="qa-filters">
+          <div><label id="qaRoleLbl">Fonction</label><select id="qaRole" onchange="qaFilter()"></select></div>
+          <div><label id="qaAcLbl">Appareil</label><select id="qaAircraft" onchange="qaFilter()"></select></div>
+          <button id="qaCsvBtn" onclick="qaExportCSV()">Exporter CSV des résultats</button>
+          <button id="qaPrintBtn" onclick="qaPrint()">Imprimer / PDF</button>
+        </div>
+      </div>
+      <div id="qaBody"></div>
     </section>
 
     <section id="tab-reports" class="hidden">
@@ -193,7 +224,7 @@ async function loadReports(){let r=await api('/rest/v1/retex_fire_2026_reports?s
 function populateFilters(){let s=document.getElementById('roleFilter'),cur=s.value;let roles=[...new Set(reports.map(r=>r.role).filter(Boolean))].sort();s.innerHTML=`<option value="">${tr('all')}</option>`+roles.map(x=>`<option>${esc(x)}</option>`).join('');s.value=cur}
 function avg(vals){let a=vals.map(Number).filter(x=>x>=1&&x<=5);return a.length?(a.reduce((x,y)=>x+y,0)/a.length).toFixed(1):'—'}
 function riskYes(v){return ['oui','yes','true','1'].includes(String(v||'').toLowerCase())}
-function renderAll(){if(!document.getElementById('adminView').classList.contains('hidden')){renderDashboard();renderReports();renderActions();setTimeout(renderCharts,0)}}
+function renderAll(){if(!document.getElementById('adminView').classList.contains('hidden')){if(!document.getElementById('tab-questions').classList.contains('hidden'))setTimeout(renderQuestions,0);renderDashboard();renderReports();renderActions();setTimeout(renderCharts,0)}}
 function counts(list,fn){let c={};list.forEach(x=>{let v=fn(x);(Array.isArray(v)?v:[v]).filter(Boolean).forEach(k=>c[k]=(c[k]||0)+1)});return c}
 function bars(id,c){let e=document.getElementById(id),arr=Object.entries(c).sort((a,b)=>b[1]-a[1]),m=Math.max(1,...arr.map(x=>x[1]));e.innerHTML=arr.length?arr.map(([k,v])=>`<div class="barrow"><div>${esc(k)}</div><div class="bartrack"><div class="barfill" style="width:${v/m*100}%"></div></div><b>${v}</b></div>`).join(''):`<span class="small">${tr('noData')}</span>`}
 function renderDashboard(){let total=reports.length,risks=reports.filter(r=>riskYes(r.risk_seen)).length;document.getElementById('stTotal').textContent=total;document.getElementById('stRisk').textContent=total?Math.round(risks/total*100)+'%':'—';document.getElementById('stTrain').textContent=avg(reports.map(r=>r.training_global));document.getElementById('stSaf').textContent=avg(reports.map(r=>r.saf_org_rating));document.getElementById('stOpen').textContent=reports.filter(r=>r.action_required&&r.review_status!=='closed').length;bars('roleBars',counts(reports,r=>r.role));bars('aircraftBars',counts(reports,r=>r.aircraft));bars('statusBars',counts(reports,r=>r.review_status||'new'));bars('priorityBars',counts(reports,r=>r.priority||'—'))}
@@ -318,7 +349,7 @@ function exportPDF(id){
   const go=()=>{try{f.contentWindow.focus();f.contentWindow.print()}catch(e){alert(e.message)}};
   const imgs=[...d.images];if(!imgs.length)setTimeout(go,150);else{let n=0;const done=()=>{if(++n>=imgs.length)setTimeout(go,150)};imgs.forEach(im=>im.complete?done():(im.onload=im.onerror=done))}
 }
-function showTab(name,btn){document.querySelectorAll('[id^=tab-]').forEach(e=>e.classList.add('hidden'));document.getElementById('tab-'+name).classList.remove('hidden');document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active'));btn.classList.add('active');if(name==='dashboard'||name==='analysis')setTimeout(renderCharts,50)}
+function showTab(name,btn){document.querySelectorAll('[id^=tab-]').forEach(e=>e.classList.add('hidden'));document.getElementById('tab-'+name).classList.remove('hidden');document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active'));btn.classList.add('active');if(name==='dashboard'||name==='analysis')setTimeout(renderCharts,50);if(name==='questions')setTimeout(renderQuestions,30)}
 function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 async function safeText(r){try{let t=await r.text();return t.slice(0,500)}catch{return 'Error'}}
 window.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
@@ -334,5 +365,175 @@ window.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
   }else if(t==='signup'){msg(lang==='fr'?'Adresse e-mail confirmée.':'Email address confirmed.','ok')}
   localStorage.setItem('retex_admin_session',JSON.stringify(session));await enterAdmin();return}
  try{session=JSON.parse(localStorage.getItem('retex_admin_session')||'null')}catch{}if(session?.access_token)enterAdmin()})();
+
+/* ================================================================
+   ANALYSE PAR QUESTION — chaque question de la taxonomie TAXO,
+   en nombres et en graphiques. Filtres fonction / appareil.
+   ================================================================ */
+const QA_STOP=new Set(('a à au aux avec ce ces cet cette dans de des du elle en et être eu il ils je la le les leur lui ma mais me même mes moi mon ne nos notre nous on ou où par pas pour qu que qui sa se ses son sur ta te tes toi ton tu un une vos votre vous y est sont été fait faire plus très bien tout tous toute toutes aussi comme sans entre lors donc car si ni être avoir a ont avait était sera peut faut doit cela ça ce c d l n s j qu m t ' +
+  'the and or of to in on for with a an is are was were be been it this that these those at by from as not no yes but if so we our you your they their there have has had do does did can could should would will just also very more most some any all')
+  .split(/\s+/));
+const QA_NIL=/^(nil|n\/?a|na|non|no|none|rien|ras|r\.a\.s\.?|aucun|aucune|néant|neant|-+|—|\.|0)$/i;
+let qaRole='', qaAircraft='';
+
+function qaT(fr,en){return lang==='fr'?fr:en}
+function qaScope(){return reports.filter(r=>{
+  const p=r.payload||{};
+  if(qaRole && (p.role||r.role)!==qaRole) return false;
+  if(qaAircraft){const ac=Array.isArray(p.aircraft)?p.aircraft:(p.aircraft?[p.aircraft]:[]); if(!ac.includes(qaAircraft)) return false;}
+  return true;
+})}
+function qaOptIndex(q,v){if(!q.o)return -1;return q.o.findIndex(x=>x[0]===v||x[1]===v)}
+function qaIsEmpty(v){return v==null||String(v).trim()===''}
+
+/* Statistiques d'une question sur une liste de rapports */
+function qaStats(q,list){
+  const N=list.length;
+  if(q.t==='radio'||q.t==='check'){
+    const c=(q.o||[]).map(()=>0), other={}; let answered=0;
+    list.forEach(r=>{
+      let v=ansRaw(r,q); const vals=q.t==='check'?v:(qaIsEmpty(v)?[]:[v]);
+      if(!vals.length) return; answered++;
+      vals.forEach(x=>{const i=qaOptIndex(q,x); if(i>=0)c[i]++; else other[x]=(other[x]||0)+1;});
+    });
+    const rows=(q.o||[]).map((o,i)=>({label:o[li()],n:c[i]}));
+    Object.entries(other).forEach(([k,n])=>rows.push({label:k,n,other:true}));
+    return {N,answered,rows};
+  }
+  if(q.t==='rating'){
+    const d=[0,0,0,0,0], vals=[];
+    list.forEach(r=>{const n=Number(ansRaw(r,q)); if(n>=1&&n<=5){d[n-1]++;vals.push(n);}});
+    vals.sort((a,b)=>a-b);
+    const answered=vals.length;
+    const mean=answered?vals.reduce((a,b)=>a+b,0)/answered:null;
+    const median=answered?(answered%2?vals[(answered-1)/2]:(vals[answered/2-1]+vals[answered/2])/2):null;
+    const sat=answered?(d[3]+d[4])/answered:null, unsat=answered?(d[0]+d[1])/answered:null;
+    return {N,answered,dist:d,mean,median,sat,unsat};
+  }
+  /* text / textarea */
+  const answers=[]; let nil=0;
+  list.forEach(r=>{const v=String(ansRaw(r,q)).trim(); if(!v) return; if(QA_NIL.test(v)){nil++;return;} answers.push({r,v});});
+  const words={};
+  answers.forEach(a=>{
+    const seen=new Set();
+    a.v.toLowerCase().normalize('NFC').split(/[^a-zà-ÿœæ0-9\-]+/i).forEach(w=>{
+      w=w.replace(/^-+|-+$/g,''); if(w.length<4||QA_STOP.has(w)||/^\d+$/.test(w)||seen.has(w)) return;
+      seen.add(w); words[w]=(words[w]||0)+1;   /* nombre de réponses citant le mot */
+    });
+  });
+  const top=Object.entries(words).filter(x=>x[1]>=2).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0])).slice(0,15);
+  /* réponses identiques regroupées (utile pour les champs courts) */
+  const groups={}; answers.forEach(a=>{const k=a.v.replace(/\s+/g,' ').trim(); const kk=k.toLowerCase(); (groups[kk]=groups[kk]||{label:k,n:0}).n++;});
+  return {N,answered:answers.length+nil,nil,answers,top,groups:Object.values(groups).sort((a,b)=>b.n-a.n)};
+}
+
+function qaPct(n,d){return d?Math.round(n/d*100)+' %':'—'}
+function qaFmt(x,dec=1){return x==null?'—':x.toFixed(dec).replace('.',lang==='fr'?',':'.')}
+function qaTypeLabel(t){return {radio:qaT('Choix unique','Single choice'),check:qaT('Choix multiples','Multiple choice'),rating:qaT('Note 1 à 5','Rating 1–5'),text:qaT('Réponse libre courte','Short text'),textarea:qaT('Réponse libre','Free text')}[t]||t}
+
+function renderQuestions(){
+  const host=document.getElementById('qaBody'); if(!host) return;
+  /* filtres */
+  const roleSel=document.getElementById('qaRole'), acSel=document.getElementById('qaAircraft');
+  const roles=[...new Set(reports.map(r=>(r.payload||{}).role||r.role).filter(Boolean))].sort();
+  const acs=[...new Set(reports.flatMap(r=>{const a=(r.payload||{}).aircraft;return Array.isArray(a)?a:(a?[a]:[])}))].sort();
+  roleSel.innerHTML=`<option value="">${qaT('Toutes','All')}</option>`+roles.map(x=>`<option${x===qaRole?' selected':''}>${esc(x)}</option>`).join('');
+  acSel.innerHTML=`<option value="">${qaT('Tous','All')}</option>`+acs.map(x=>`<option${x===qaAircraft?' selected':''}>${esc(x)}</option>`).join('');
+  document.getElementById('qaRoleLbl').textContent=qaT('Fonction','Role');
+  document.getElementById('qaAcLbl').textContent=qaT('Appareil','Aircraft');
+  document.getElementById('qaTitle').textContent=qaT('Analyse par question','Question-by-question analysis');
+  document.getElementById('qaCsvBtn').textContent=qaT('Exporter CSV des résultats','Export results CSV');
+  document.getElementById('qaPrintBtn').textContent=qaT('Imprimer / PDF','Print / PDF');
+
+  const list=qaScope();
+  document.getElementById('qaScope').textContent=qaT(
+    `${list.length} rapport(s) analysé(s) sur ${reports.length}`+((qaRole||qaAircraft)?' (filtre actif)':''),
+    `${list.length} of ${reports.length} report(s) analysed`+((qaRole||qaAircraft)?' (filter on)':''));
+
+  Object.keys(charts).filter(k=>k.startsWith('qa_')).forEach(chartDestroy);
+  let html='', qn=0; const todo=[];
+  TAXO.forEach((sec,si)=>{
+    html+=`<div class="rsec qa-sec">${esc(sec.s[li()])}</div><div class="qa-grid">`;
+    sec.q.forEach(q=>{
+      qn++; const st=qaStats(q,list), id='qa_'+q.k;
+      const head=`<div class="qa-head"><span class="qa-num">Q${qn}</span><div><h4>${esc(q.l[li()])}</h4>
+        <div class="qa-meta"><span class="chip">${esc(qaTypeLabel(q.t))}</span>
+        <span>${qaT('Réponses','Answers')} : <b>${st.answered}</b> / ${st.N} (${qaPct(st.answered,st.N)})</span></div></div></div>`;
+      if(q.t==='radio'||q.t==='check'){
+        const base=q.t==='check'?st.answered:st.answered;
+        const rows=st.rows.map(r=>`<tr><td>${esc(r.label)}${r.other?` <span class="small">(${qaT('hors liste','not listed')})</span>`:''}</td><td class="n">${r.n}</td><td class="n">${qaPct(r.n,base)}</td></tr>`).join('');
+        const h=Math.max(150,st.rows.length*34+40);
+        html+=`<div class="qa-card">${head}
+          <div class="qa-chart" style="height:${h}px"><canvas id="${id}"></canvas></div>
+          <table class="qa-tbl"><thead><tr><th>${qaT('Réponse','Answer')}</th><th class="n">${qaT('Nb','Count')}</th><th class="n">%</th></tr></thead><tbody>${rows}</tbody></table>
+          ${q.t==='check'?`<div class="small">${qaT('Plusieurs réponses possibles : % calculé sur les répondants.','Several answers allowed: % of respondents.')}</div>`:''}</div>`;
+        todo.push(()=>chartMake(id,'bar',st.rows.map(r=>r.label.length>42?r.label.slice(0,40)+'…':r.label),st.rows.map(r=>r.n),
+          {label:qaT('Nombre','Count'),backgroundColor:st.rows.map(r=>r.other?'#98a2b3':'#0e617d'),
+           options:{indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.raw} (${qaPct(c.raw,base)})`}}},
+                    scales:{x:{beginAtZero:true,ticks:{precision:0},grid:{color:'rgba(0,0,0,.06)'}},y:{grid:{display:false}}}}}));
+      } else if(q.t==='rating'){
+        const tiles=`<div class="qa-kpis">
+          <div><b>${qaFmt(st.mean)}</b><span>${qaT('Moyenne / 5','Mean / 5')}</span></div>
+          <div><b>${qaFmt(st.median)}</b><span>${qaT('Médiane','Median')}</span></div>
+          <div><b class="good">${st.sat==null?'—':Math.round(st.sat*100)+' %'}</b><span>${qaT('Satisfaits (4-5)','Satisfied (4-5)')}</span></div>
+          <div><b class="badc">${st.unsat==null?'—':Math.round(st.unsat*100)+' %'}</b><span>${qaT('Insatisfaits (1-2)','Dissatisfied (1-2)')}</span></div></div>`;
+        const rows=st.dist.map((n,i)=>`<td class="n">${n}</td>`).join('');
+        html+=`<div class="qa-card">${head}${tiles}
+          <div class="qa-chart" style="height:190px"><canvas id="${id}"></canvas></div>
+          <table class="qa-tbl"><thead><tr><th>${qaT('Note','Rating')}</th><th class="n">1</th><th class="n">2</th><th class="n">3</th><th class="n">4</th><th class="n">5</th></tr></thead>
+          <tbody><tr><td>${qaT('Nb','Count')}</td>${rows}</tr><tr><td>%</td>${st.dist.map(n=>`<td class="n">${qaPct(n,st.answered)}</td>`).join('')}</tr></tbody></table></div>`;
+        todo.push(()=>chartMake(id,'bar',['1','2','3','4','5'],st.dist,
+          {label:qaT('Nombre','Count'),backgroundColor:['#b42318','#e0702d','#f2a900','#5fa36a','#16794b'],
+           options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.raw} (${qaPct(c.raw,st.answered)})`}}},
+                    scales:{y:{beginAtZero:true,ticks:{precision:0}},x:{grid:{display:false}}}}}));
+      } else {
+        const isName=q.k==='name';
+        const short=q.t==='text'&&!isName&&st.groups.some(g=>g.n>1);
+        let inner='';
+        if(st.nil&&!isName) inner+=`<div class="small">${qaT(`Dont ${st.nil} réponse(s) « rien à signaler » (NIL, Non, RAS…)`,`Including ${st.nil} “nothing to report” answer(s) (NIL, No…)`)}</div>`;
+        if(!isName && st.top.length) inner+=`<div class="qa-words"><span class="small">${qaT('Mots récurrents (nb de réponses) :','Recurring words (answers):')}</span>
+          <div class="chips">${st.top.map(([w,n])=>`<span class="chip">${esc(w)} <b>${n}</b></span>`).join('')}</div></div>`;
+        if(short && st.groups.length){
+          const maxN=Math.max(1,...st.groups.map(g=>g.n));
+          inner+=`<div class="barlist" style="margin-top:8px">${st.groups.map(g=>`<div class="barrow"><div title="${esc(g.label)}">${esc(g.label.length>60?g.label.slice(0,58)+'…':g.label)}</div><div class="bartrack"><div class="barfill" style="width:${g.n/maxN*100}%"></div></div><b>${g.n}</b></div>`).join('')}</div>`;
+        }
+        if(!isName && st.answers.length){
+          inner+=`<details class="qa-ans"><summary>${qaT(`Voir les ${st.answers.length} réponse(s)`,`Show the ${st.answers.length} answer(s)`)}</summary><ol>`+
+            st.answers.map(a=>`<li><div>${esc(a.v)}</div><div class="small"><a href="#" onclick="openReport('${a.r.id}');return false">${esc(a.r.report_id||'')}</a> · ${esc((a.r.payload||{}).role||a.r.role||'')}</div></li>`).join('')+`</ol></details>`;
+        }
+        if(isName) inner+=`<div class="small">${qaT('Champ nominatif : seul le nombre de réponses est affiché.','Personal field: only the answer count is shown.')}</div>`;
+        html+=`<div class="qa-card qa-wide">${head}${inner}</div>`;
+      }
+    });
+    html+='</div>';
+  });
+  host.innerHTML=html;
+  setTimeout(()=>todo.forEach(f=>{try{f()}catch(e){console.warn(e)}}),0);
+}
+
+function qaFilter(){qaRole=document.getElementById('qaRole').value;qaAircraft=document.getElementById('qaAircraft').value;renderQuestions()}
+
+function qaExportCSV(){
+  const list=qaScope(), out=[[qaT('Section','Section'),'Q',qaT('Question','Question'),qaT('Type','Type'),qaT('Réponse / indicateur','Answer / metric'),qaT('Nombre','Count'),'%',qaT('Répondants','Respondents'),qaT('Rapports analysés','Reports analysed')]];
+  let qn=0;
+  TAXO.forEach(sec=>sec.q.forEach(q=>{
+    qn++; const st=qaStats(q,list), base=[sec.s[li()],'Q'+qn,q.l[li()],qaTypeLabel(q.t)];
+    if(q.t==='radio'||q.t==='check') st.rows.forEach(r=>out.push([...base,r.label,r.n,st.answered?Math.round(r.n/st.answered*100):'',st.answered,st.N]));
+    else if(q.t==='rating'){
+      st.dist.forEach((n,i)=>out.push([...base,String(i+1),n,st.answered?Math.round(n/st.answered*100):'',st.answered,st.N]));
+      out.push([...base,qaT('Moyenne','Mean'),qaFmt(st.mean,2),'',st.answered,st.N]);
+      out.push([...base,qaT('Médiane','Median'),qaFmt(st.median,1),'',st.answered,st.N]);
+    } else {
+      out.push([...base,qaT('Réponses renseignées','Answers given'),st.answered,st.N?Math.round(st.answered/st.N*100):'',st.answered,st.N]);
+      if(st.nil) out.push([...base,qaT('Dont « rien à signaler »','Of which “nothing to report”'),st.nil,'',st.answered,st.N]);
+    }
+  }));
+  const csv='\ufeff'+out.map(r=>r.map(v=>{v=String(v??'');return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(';')).join('\r\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download='RETEX_Feux_2026_analyse_questions_'+new Date().toISOString().slice(0,10)+'.csv';document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);
+}
+function qaPrint(){document.body.classList.add('qa-printing');document.querySelectorAll('#tab-questions details').forEach(d=>d.open=true);
+  setTimeout(()=>{window.print();document.body.classList.remove('qa-printing')},300)}
 </script>
 </body></html>
